@@ -1,0 +1,78 @@
+name: fyp
+description: Smart Hostel Finder and Booking System for Students
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ─── State Management ───────────────────────────────────────────────────────
+  get: ^4.6.6                        # GetX: state management, routing, DI
+
+  # ─── Firebase ───────────────────────────────────────────────────────────────
+  firebase_core: ^2.27.1            # Firebase core initialization
+  firebase_auth: ^4.19.6             # Authentication (email/password, OAuth)
+  cloud_firestore: ^4.17.5           # Firestore NoSQL database
+  firebase_storage: ^11.7.7          # Storage for hostel images
+  firebase_messaging: ^14.9.4       # Push notifications
+
+  # ─── Image Handling ──────────────────────────────────────────────────────────
+  image_picker: ^1.0.7               # Pick images from gallery/camera
+  cached_network_image: ^3.3.1       # Cache and display network images
+
+  # ─── Maps & Location ────────────────────────────────────────────────────────
+  flutter_map: ^7.0.2                # Free OpenStreetMap tiles (no API key needed)
+  latlong2: ^0.9.1                   # LatLng type for flutter_map
+  geolocator: ^10.1.0                # Get device GPS location
+  geocoding: ^2.1.1                  # Convert coordinates ↔ addresses
+  url_launcher: ^6.2.4               # Open Google Maps navigation
+
+  # ─── UI & Icons ─────────────────────────────────────────────────────────────
+  flutter_rating_bar: ^4.0.1         # Star rating widget
+  shimmer: ^3.0.0                    # Loading skeleton/shimmer effect
+  flutter_slidable: ^3.0.1           # Swipe-to-action list items
+  lottie: ^3.0.0                     # Lottie JSON animations
+  fl_chart: ^0.66.2                  # Charts for admin dashboard
+
+  # ─── Utilities ──────────────────────────────────────────────────────────────
+  intl: ^0.18.1                      # Date/number formatting (internationalization)
+  shared_preferences: ^2.2.2         # Persistent local key-value storage
+  connectivity_plus: ^5.0.2          # Monitor network connectivity
+  flutter_local_notifications: ^19.5.0  # Local push notifications
+
+  # ─── Forms & Validation ─────────────────────────────────────────────────────
+  email_validator: ^2.1.17           # Email format validation
+
+  cupertino_icons: ^1.0.2
+  http: ^1.6.0
+  cloudinary_public: ^0.23.1
+  tflite_flutter: ^0.12.1
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/launcherIcon.png"
+  min_sdk_android: 21
+
+
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/ml/
+
