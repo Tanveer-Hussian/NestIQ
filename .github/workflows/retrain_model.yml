@@ -10,7 +10,10 @@ on:
 jobs:
   retrain-xgboost:
     runs-on: ubuntu-latest
-    
+
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,25 +23,30 @@ jobs:
         with:
           python-version: '3.10'
           cache: 'pip'
-          
+
       - name: Install Dependencies
-        run: |
-          pip install -r ml_model/requirements.txt
-          
+        run: pip install -r ml_model/requirements.txt
+
       - name: Authenticate with Firebase
-        run: |
-          # Create the service account file securely from GitHub Secrets
-          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > service_account.json
-          
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > service_account.json
+
       - name: Run Retraining Script
         env:
-          # This tells firebase-admin to use our securely created service account file
           GOOGLE_APPLICATION_CREDENTIALS: service_account.json
         run: |
           cd ml_model
           python retrain_pipeline.py
-          
+          # Move the trained model into the assets folder so the app can fetch it
+          mv xgboost_model.json ../assets/ml/xgboost_model.json
+
       - name: Cleanup Secrets
         if: always()
+        run: rm -f service_account.json
+
+      - name: Commit Updated Model to Repository
         run: |
-          rm -f service_account.json
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add assets/ml/xgboost_model.json
+          git diff --staged --quiet || git commit -m "chore: update XGBoost model weights [skip ci]"
+          git push

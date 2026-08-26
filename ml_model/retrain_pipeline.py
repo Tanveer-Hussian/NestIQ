@@ -1,5 +1,5 @@
 import firebase_admin
-from firebase_admin import credentials, firestore, storage
+from firebase_admin import credentials, firestore
 import pandas as pd
 import xgboost as xgb
 import json
@@ -98,42 +98,30 @@ def generate_synthetic_data():
 
 def train_and_export():
     initialize_firebase()
-    
-    # Try fetching real data
+
     try:
         db = firestore.client()
         df = fetch_real_data(db)
         if df.empty:
             df = generate_synthetic_data()
     except Exception as e:
-        print(f"Could not fetch from Firestore (running locally?): {e}")
+        print(f"Could not fetch from Firestore: {e}")
         df = generate_synthetic_data()
-    
+
     print(f"Training XGBRegressor on {len(df)} records...")
     X = df[['average_rating', 'complaint_resolution_rate', 'review_volume', 'num_bookings', 'proximity']].values
     y = df['target_score'].values
-    
+
     model = xgb.XGBRegressor(n_estimators=100, max_depth=3, learning_rate=0.1)
     model.fit(X, y)
-    
-    # Export XGBoost tree to JSON format
+
     trees = model.get_booster().get_dump(dump_format='json')
     json_model = "[" + ",".join(trees) + "]"
-    
-    local_path = 'xgboost_model.json'
-    with open(local_path, 'w') as f:
+
+    with open('xgboost_model.json', 'w') as f:
         f.write(json_model)
-        
-    print(f"Model saved locally to {local_path}")
-    
-    # Upload to Firebase Storage so the Flutter app can download the updated weights
-    try:
-        bucket = storage.bucket()
-        blob = bucket.blob('ml_models/xgboost_model.json')
-        blob.upload_from_filename(local_path)
-        print("Model pushed to Firebase Storage successfully!")
-    except Exception as e:
-        print(f"Skipped uploading to Firebase Storage: {e}")
+
+    print("Model saved to xgboost_model.json")
 
 if __name__ == '__main__':
     train_and_export()
