@@ -12,7 +12,7 @@ def initialize_firebase():
         # Use Application Default Credentials when deployed to GCP/Cloud Functions
         cred = credentials.ApplicationDefault()
         firebase_admin.initialize_app(cred, {
-            'storageBucket': 'fyp-smart-hostel.appspot.com' # Needs to be updated with real bucket
+            'storageBucket': 'smart-hostel-system-9f924.firebasestorage.app'
         })
     except Exception:
         # Fallback if already initialized or testing
