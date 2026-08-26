@@ -21,12 +21,16 @@ class DynamicHostelScoreModel {
         _isLoaded = true;
       }
       
-      // final response = await http.get(Uri.parse('YOUR_STORAGE_URL_HERE'));
-      // if (response.statusCode == 200) {
-      //   _trees = json.decode(response.body);
-      //   _isLoaded = true;
-      //   prefs.setString('xgboost_model_json', response.body);
-      // }
+      // Attempt to download the latest model from your public Firebase Storage URL
+      final response = await http.get(Uri.parse(
+          'https://firebasestorage.googleapis.com/v0/b/smart-hostel-system-9f924.firebasestorage.app/o/ml_models%2Fxgboost_model.json?alt=media'));
+          
+      if (response.statusCode == 200) {
+        _trees = json.decode(response.body);
+        _isLoaded = true;
+        prefs.setString('xgboost_model_json', response.body);
+        print("Successfully updated dynamic hostel score model weights.");
+      }
     } catch (e) {
       print("Failed to fetch dynamic weights: \$e");
     }
