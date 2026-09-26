@@ -1,10 +1,10 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:fyp/controllers/AuthController.dart';
 import 'package:fyp/models/ReviewModel.dart';
 import 'package:fyp/services/ReviewService.dart';
 import 'package:fyp/services/hostelService.dart';
 import 'package:get/get.dart';
-
-
 class ReviewController extends GetxController {
 
   final ReviewService _reviewService = Get.find<ReviewService>();
@@ -38,8 +38,8 @@ class ReviewController extends GetxController {
       }
 
       // ── FR-6.3: Simple fake review detection heuristic ──────────────────
-      // In production, replace this with a TensorFlow Lite or Scikit-learn model
-      final isSuspicious = _detectFakeReview(comment, rating);
+      // Call the NLP REST API backend
+      final isSuspicious = await _detectFakeReviewAPI(comment, rating);
 
       final review = ReviewModel(
         id: '',
@@ -50,7 +50,7 @@ class ReviewController extends GetxController {
         rating: rating,
         comment: comment,
         isFlagged: isSuspicious,
-        flagReason: isSuspicious ? 'Auto-flagged by AI detector' : null,
+        flagReason: isSuspicious ? 'Auto-flagged by NLP AI detector' : null,
         createdAt: DateTime.now(),
       );
 
@@ -70,25 +70,40 @@ class ReviewController extends GetxController {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
-  // FR-6.3: Heuristic fake review detection.
+  // FR-6.3: NLP fake review detection via REST API.
   // Returns true if the review looks suspicious.
-  // In production, call a TFLite or Scikit-learn model here.
   // ────────────────────────────────────────────────────────────────────────────
-  bool _detectFakeReview(String comment, double rating) {
-    // Rule 1: Extremely short comment with extreme rating
+  Future<bool> _detectFakeReviewAPI(String comment, double rating) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:5000/predict_review'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'comment': comment,
+          'rating': rating,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['is_suspicious'] ?? false;
+      }
+    } catch (e) {
+      print('NLP API Error: $e');
+    }
+    // Fallback if API fails
+    return _detectFakeReviewLocal(comment, rating);
+  }
+
+  bool _detectFakeReviewLocal(String comment, double rating) {
     if (comment.trim().length < 10 && (rating >= 5.0 || rating <= 1.0)) {
       return true;
     }
-
-    // Rule 2: All capital letters (shouting/spam indicator)
     if (comment == comment.toUpperCase() && comment.length > 20) {
       return true;
     }
-
-    // Rule 3: Repeated characters (e.g., "greaaaaat!!!")
     final repeatedChars = RegExp(r'(.)\1{4,}');
     if (repeatedChars.hasMatch(comment)) return true;
-
     return false;
   }
 

@@ -1,7 +1,9 @@
-pandas==2.2.0
-numpy==1.26.4
-scikit-learn==1.4.0
-tensorflow==2.15.0
+pandas
+numpy
+scikit-learn
+tensorflow
+fastapi
+uvicorn
 
-firebase-admin==6.5.0
-xgboost==2.0.3
+firebase-admin
+xgboost
