@@ -76,7 +76,7 @@ class ReviewController extends GetxController {
   Future<bool> _detectFakeReviewAPI(String comment, double rating) async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/predict_review'),
+        Uri.parse('https://nestiq-mmht.onrender.com/predict_review'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'comment': comment,
