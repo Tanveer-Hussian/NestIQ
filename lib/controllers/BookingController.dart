@@ -135,6 +135,7 @@ class BookingController extends GetxController {
   // ────────────────────────────────────────────────────────────────────────────
   // FR-5.2: Owner accepts or rejects a booking
   // FR-5.3: Room availability is updated after confirmation
+  // FR-10.2: Executed via atomic Firestore Transaction
   // ────────────────────────────────────────────────────────────────────────────
   Future<void> respondToBooking(
     BookingModel booking,
@@ -144,19 +145,12 @@ class BookingController extends GetxController {
     try {
       isLoading.value = true;
 
-      await _bookingService.updateBookingStatus(booking.id, status, ownerNote: note);
-
-      // FR-5.3: If confirmed, decrement available rooms
-      if (status == AppConstants.bookingConfirmed) {
-        await _hostelService.decrementAvailableRooms(booking.hostelId);
-      }
-
-      // FR-9: Update ranking stats — every response counts as a booking decision
-      await _hostelService.updateHostelStats(
+      // Execute atomic transaction for status update + room availability + stats
+      await _bookingService.respondToBookingWithTransaction(
+        booking.id,
         booking.hostelId,
-        totalBookingsDelta: 1,
-        confirmedBookingsDelta:
-            status == AppConstants.bookingConfirmed ? 1 : 0,
+        status,
+        ownerNote: note,
       );
 
       // FR-9.1: Notify the student of the decision
@@ -173,7 +167,7 @@ class BookingController extends GetxController {
 
       Get.snackbar('Done', 'Booking $statusMsg successfully.');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update booking.');
+      Get.snackbar('Error', e.toString().replaceFirst('Exception: ', ''));
     } finally {
       isLoading.value = false;
     }
@@ -181,18 +175,15 @@ class BookingController extends GetxController {
 
   // ────────────────────────────────────────────────────────────────────────────
   // FR-5.4: Student cancels a booking
+  // FR-10.2: Executed via atomic Firestore Transaction
   // ────────────────────────────────────────────────────────────────────────────
   Future<void> cancelBooking(BookingModel booking) async {
     try {
-      await _bookingService.updateBookingStatus(
+      await _bookingService.cancelBookingWithTransaction(
         booking.id,
-        AppConstants.bookingCancelled,
+        booking.hostelId,
+        booking.status,
       );
-
-      // If booking was confirmed, restore available room count
-      if (booking.status == AppConstants.bookingConfirmed) {
-        await _hostelService.incrementAvailableRooms(booking.hostelId);
-      }
 
       Get.snackbar('Cancelled', 'Booking cancelled successfully.');
     } catch (e) {

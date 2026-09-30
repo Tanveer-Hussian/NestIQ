@@ -18,18 +18,86 @@ class BookingService extends GetxService {
     return docRef.id;
   }
 
-  // FR-5.2 / FR-5.4: Update booking status
-  Future<void> updateBookingStatus(
+  // FR-5.2 / FR-5.3 / FR-10.2: Respond to booking status atomically via Firestore Transaction
+  Future<void> respondToBookingWithTransaction(
     String bookingId,
+    String hostelId,
     String status, {
     String? ownerNote,
   }) async {
-    final updates = <String, dynamic>{
-      'status': status,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-    if (ownerNote != null) updates['ownerNote'] = ownerNote;
-    await _col.doc(bookingId).update(updates);
+    await _db.runTransaction((transaction) async {
+      final bookingRef = _col.doc(bookingId);
+      final hostelRef = _db.collection(AppConstants.colHostels).doc(hostelId);
+
+      final bookingSnap = await transaction.get(bookingRef);
+      if (!bookingSnap.exists) {
+        throw Exception('Booking document does not exist.');
+      }
+
+      final hostelSnap = await transaction.get(hostelRef);
+
+      // If confirming booking, verify room availability
+      if (status == AppConstants.bookingConfirmed) {
+        if (hostelSnap.exists) {
+          final availableRooms = (hostelSnap.data()?['availableRooms'] ?? 0) as int;
+          if (availableRooms <= 0) {
+            throw Exception('Cannot confirm booking: No available rooms remaining.');
+          }
+        }
+      }
+
+      // 1. Update booking status
+      final bookingUpdates = <String, dynamic>{
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (ownerNote != null) bookingUpdates['ownerNote'] = ownerNote;
+      transaction.update(bookingRef, bookingUpdates);
+
+      // 2. Update hostel rooms & ranking stats atomically
+      if (hostelSnap.exists) {
+        final hostelUpdates = <String, dynamic>{
+          'totalBookings': FieldValue.increment(1),
+        };
+        if (status == AppConstants.bookingConfirmed) {
+          hostelUpdates['availableRooms'] = FieldValue.increment(-1);
+          hostelUpdates['confirmedBookings'] = FieldValue.increment(1);
+        }
+        transaction.update(hostelRef, hostelUpdates);
+      }
+    });
+  }
+
+  // FR-5.4 / FR-10.2: Cancel booking atomically via Firestore Transaction
+  Future<void> cancelBookingWithTransaction(
+    String bookingId,
+    String hostelId,
+    String previousStatus,
+  ) async {
+    await _db.runTransaction((transaction) async {
+      final bookingRef = _col.doc(bookingId);
+      final hostelRef = _db.collection(AppConstants.colHostels).doc(hostelId);
+
+      final bookingSnap = await transaction.get(bookingRef);
+      if (!bookingSnap.exists) {
+        throw Exception('Booking document does not exist.');
+      }
+
+      final hostelSnap = await transaction.get(hostelRef);
+
+      // Update booking status
+      transaction.update(bookingRef, {
+        'status': AppConstants.bookingCancelled,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Restore available room if booking was confirmed
+      if (previousStatus == AppConstants.bookingConfirmed && hostelSnap.exists) {
+        transaction.update(hostelRef, {
+          'availableRooms': FieldValue.increment(1),
+        });
+      }
+    });
   }
 
   // Student booking history — sorted client-side to avoid composite index
